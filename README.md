@@ -2,7 +2,7 @@
 
 ## 📌 Project Overview
 
-Loola TV is a Python-based backend project for managing a live streaming platform. The project uses **Flask** to build REST APIs and **MySQL** to store and manage live stream information.
+Loola TV is a Python-based backend project for managing a live streaming platform. The project uses **Flask** to build REST APIs, **MySQL** to store and manage live stream information, **WebSocket** for real-time communication, and **FFmpeg** for video and audio stream processing.
 
 The backend follows a structured **Route → Controller → Model → Database** architecture, making the application easier to maintain and extend.
 
@@ -14,18 +14,23 @@ The backend follows a structured **Route → Controller → Model → Database**
 * Stream information storage and retrieval
 * Route, Controller, and Model architecture
 * JSON-based API responses
+* **WebSocket-based real-time communication**
+* **Real-time viewer count and stream status updates**
+* **FFmpeg-based video and audio processing**
+* **RTMP stream processing foundation**
 * Modular backend project structure
-* Foundation for future RTMP/live-streaming integration
 
 ## 🛠️ Technologies Used
 
-* **Python**
-* **Flask**
-* **MySQL**
-* **XAMPP**
-* **REST API**
-* **VS Code**
-* **Git & GitHub**
+* **Python** – Backend programming
+* **Flask** – REST API development
+* **MySQL** – Database management
+* **XAMPP** – Local MySQL server environment
+* **WebSocket / Flask-SocketIO** – Real-time communication
+* **FFmpeg** – Video and audio processing
+* **REST API** – Client-server communication
+* **VS Code** – Development environment
+* **Git & GitHub** – Version control
 
 ## 📂 Project Structure
 
@@ -47,25 +52,69 @@ loola_backend/
 ├── database/
 │   └── db.py
 │
+├── streaming/
+│   └── ffmpeg_service.py
+│
+├── websocket/
+│   └── socket_service.py
+│
 └── README.md
 ```
 
 ## 🔄 Backend Architecture
 
 ```text
-Client
-   │
-   ▼
-Flask API Routes
-   │
-   ▼
-Controllers
-   │
-   ▼
-Models
-   │
-   ▼
-MySQL Database
+                         Client
+                           │
+                           ▼
+                    Flask REST API
+                           │
+                           ▼
+                         Routes
+                           │
+                           ▼
+                      Controllers
+                           │
+                           ▼
+                         Models
+                           │
+                           ▼
+                    MySQL Database
+
+
+                    LIVE STREAMING
+                         
+Streamer / OBS
+      │
+      │ RTMP
+      ▼
+Streaming Server
+      │
+      ▼
+    FFmpeg
+      │
+      ├── Video Processing
+      ├── Audio Processing
+      └── Stream Conversion
+      │
+      ▼
+   Live Stream
+      │
+      ▼
+    Viewers
+
+
+                    REAL-TIME DATA
+
+Viewer / Streamer
+        │
+        ▼
+     WebSocket
+        │
+        ├── Live Chat
+        ├── Viewer Count
+        ├── Stream Status
+        └── Notifications
 ```
 
 ### Request Flow
@@ -76,6 +125,14 @@ MySQL Database
 4. Model communicates with the database.
 5. MySQL returns the required data.
 6. Flask sends a JSON response to the client.
+
+### Live Streaming Flow
+
+1. Streamer sends a live video using OBS or another streaming application.
+2. The stream is received through an RTMP endpoint.
+3. FFmpeg processes the video and audio stream.
+4. The processed stream is prepared for delivery to viewers.
+5. WebSocket handles real-time events such as viewer count, chat, and stream status.
 
 ## ⚙️ Installation
 
@@ -101,8 +158,84 @@ venv\Scripts\activate
 ### 3. Install Dependencies
 
 ```bash
-pip install flask mysql-connector-python
+pip install flask
+pip install mysql-connector-python
+pip install flask-socketio
 ```
+
+## 🎥 FFmpeg Installation
+
+FFmpeg is used for processing live video and audio streams.
+
+After installing FFmpeg, verify the installation:
+
+```bash
+ffmpeg -version
+```
+
+If FFmpeg is installed correctly, the terminal will display the FFmpeg version and configuration details.
+
+### Example FFmpeg Command
+
+```bash
+ffmpeg -re -i input.mp4 -c:v libx264 -c:a aac -f flv rtmp://localhost/live/test
+```
+
+This command reads a video file, processes the video and audio, and sends the output to an RTMP streaming endpoint.
+
+### Python FFmpeg Integration
+
+```python
+import subprocess
+
+def start_stream(input_file, rtmp_url):
+
+    command = [
+        "ffmpeg",
+        "-re",
+        "-i", input_file,
+        "-c:v", "libx264",
+        "-c:a", "aac",
+        "-f", "flv",
+        rtmp_url
+    ]
+
+    process = subprocess.Popen(command)
+
+    return process
+```
+
+## 🔌 WebSocket
+
+WebSocket provides a persistent connection between the client and server for real-time communication.
+
+In the Loola TV backend, WebSocket can be used for:
+
+* Live chat
+* Real-time viewer count
+* Stream status updates
+* Notifications
+* Live interaction events
+
+### Flask-SocketIO Example
+
+```python
+from flask_socketio import SocketIO
+
+socketio = SocketIO(app)
+
+@socketio.on("message")
+def handle_message(data):
+
+    print("Message received:", data)
+
+    socketio.emit(
+        "message",
+        data
+    )
+```
+
+The WebSocket connection allows the server to send updates to connected clients without requiring continuous HTTP requests.
 
 ## 🗄️ MySQL Setup
 
@@ -160,6 +293,8 @@ cursor = conn.cursor()
 
 ## ▶️ Run the Application
 
+Start **MySQL** from XAMPP and make sure FFmpeg is available in your system PATH.
+
 Start the Flask server:
 
 ```bash
@@ -208,6 +343,18 @@ http://127.0.0.1:5000/streams
 }
 ```
 
+## 📡 WebSocket Events
+
+Example WebSocket events that can be implemented:
+
+| Event            | Purpose                             |
+| ---------------- | ----------------------------------- |
+| `message`        | Send and receive chat messages      |
+| `viewer_update`  | Update live viewer count            |
+| `stream_started` | Notify clients when a stream starts |
+| `stream_stopped` | Notify clients when a stream stops  |
+| `notification`   | Send real-time notifications        |
+
 ## 🧪 Testing
 
 The API can be tested using:
@@ -223,9 +370,12 @@ Example:
 curl http://127.0.0.1:5000/streams
 ```
 
+WebSocket functionality can be tested using a compatible WebSocket client or a frontend application connected to the Flask-SocketIO server.
+
 ## 🔮 Future Enhancements
 
 * User registration and authentication
+* JWT authentication
 * Stream key generation
 * RTMP server integration
 * Start/stop stream APIs
@@ -233,14 +383,18 @@ curl http://127.0.0.1:5000/streams
 * Real-time chat
 * Stream analytics
 * Multi-platform streaming
+* YouTube/Facebook/Twitch integration
+* Stream recording using FFmpeg
+* Multiple video quality/transcoding support
 * Admin dashboard
-* JWT authentication
 * Docker deployment
 * Production WSGI server configuration
 
 ## 🎯 Project Objective
 
-The main objective of this project is to develop a modular and scalable backend for a live streaming platform using Python, Flask, and MySQL. The architecture provides a foundation for integrating live video streaming, stream management, authentication, analytics, and other platform services.
+The main objective of this project is to develop a modular and scalable backend for a live streaming platform using **Python, Flask, MySQL, WebSocket, and FFmpeg**.
+
+The architecture provides a foundation for integrating **live video streaming, stream management, real-time communication, authentication, analytics, multimedia processing, and other platform services**.
 
 ## 👩‍💻 Author
 
